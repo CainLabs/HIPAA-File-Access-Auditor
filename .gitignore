@@ -1,0 +1,22 @@
+# PowerShell session history
+*-history.txt
+
+# PowerShell module files, when stored in a local directory
+*.psd1
+*.psm1
+
+# Local module directory
+/Modules/
+
+# Nuget Packages
+*.nupkg
+*.snupkg
+/packages/
+
+# Common Visual Studio Code files
+.vscode/
+*.code-workspace
+
+# Credentials and local settings
+*secret*.ps1
+*credential*.psxml
