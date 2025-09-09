@@ -101,6 +101,13 @@ The script will produce a `.csv` file containing any events that were flagged as
 
 -----
 
+## Testing & Validation
+
+This script has been tested using a structured validation plan. For detailed instructions on how to set up a lab environment and run the test cases yourself, please see the [project Wiki](https://github.com/CainLabs/HIPAA-File-Access-Auditor/wiki).
+
+-----
+
 ## Disclaimer
 
 This tool is provided as-is to assist with security and compliance efforts. It is not a guarantee of HIPAA compliance. Always validate the script's findings and use it as one component of a comprehensive security and privacy program.
+
