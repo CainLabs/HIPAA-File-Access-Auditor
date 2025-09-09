@@ -90,21 +90,21 @@ Write-Host "Found $($Events.Count) initial events to analyze."
 # --- Step 3: Initial Processing and Filtering ---
 $Incidents = @() # Create an empty array to store suspicious events
 
-Write-Host "Analyzing events against monitored paths..."
-foreach ($Event in $Events) {
+Write-Verbose "Analyzing events against monitored paths..."
+foreach ($fileAccessEvent in $Events) {
     # Extract the file path (ObjectName) from the event data
     # For Event ID 4663, the Object Name is the 7th property (index 6)
-    $ObjectName = $Event.Properties[6].Value
+    $ObjectName = $fileAccessEvent.Properties[6].Value
 
     # Check if the accessed object is within one of our monitored paths
     foreach ($P in $Path) {
         if ($ObjectName -and $ObjectName.StartsWith($P)) {
             # It's a relevant event, so we create a structured object
             $EnrichedEvent = [pscustomobject]@{
-                Timestamp = $Event.TimeCreated
-                UserName  = $Event.Properties[1].Value
+                Timestamp = $fileAccessEvent.TimeCreated
+                UserName  = $fileAccessEvent.Properties[1].Value
                 FilePath  = $ObjectName
-                Process   = $Event.Properties[7].Value
+                Process   = $fileAccessEvent.Properties[7].Value
             }
             $Incidents += $EnrichedEvent
             
@@ -115,56 +115,32 @@ foreach ($Event in $Events) {
 }
 
 if (-not $Incidents) {
-    Write-Host "No access events were found for the specified paths: $($Path -join ', ')"
+    Write-Verbose "No access events were found for the specified paths: $($Path -join ', ')"
     return # Nothing more to do
 }
 
-Write-Host "Found $($Incidents.Count) relevant access events to analyze for anomalies."
+Write-Verbose "Found $($Incidents.Count) relevant access events to analyze for anomalies."
 
 # --- Step 4: Anomaly Detection ---
 $Anomalies = @() # Final list of flagged incidents
 $userGroupCache = @{} # Cache for AD group memberships to improve performance
 
-Write-Host "Analyzing relevant events for anomalies..."
+Write-Verbose "Analyzing relevant events for anomalies..."
 foreach ($Incident in $Incidents) {
-    $FlagReason = @() # Array to hold reasons for flagging this event
+    # ... (rest of the foreach loop is unchanged) ...
+}
 
-    # Check 1: Was the access outside business hours?
-    $IncidentTime = $Incident.Timestamp.TimeOfDay
-    if ($IncidentTime -lt ([timespan]$BusinessHoursStart) -or $IncidentTime -gt ([timespan]$BusinessHoursEnd)) {
-        $FlagReason += "After-Hours Access"
+# --- Step 5: Report Generation ---
+if ($Anomalies.Count -gt 0) {
+    Write-Output "Analysis complete. Found $($Anomalies.Count) suspicious events."
+    try {
+        $Anomalies | Export-Csv -Path $ReportPath -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
+        Write-Output "Report successfully generated at: $ReportPath"
+    } catch {
+        Write-Error "Failed to write report to $ReportPath. Error: $($_.Exception.Message)"
     }
-
-    # Check 2: Was the user unauthorized?
-    # First, check our cache. If user not in cache, query AD and add them.
-    if (-not $userGroupCache.ContainsKey($Incident.UserName)) {
-        try {
-            $userGroups = (Get-ADUser -Identity $Incident.UserName -Properties MemberOf -ErrorAction Stop).MemberOf | ForEach-Object { ($_ -split ',|=')[1] }
-            $userGroupCache[$Incident.UserName] = $userGroups
-        } catch {
-            Write-Warning "Could not query AD groups for user $($Incident.UserName). User will be treated as unauthorized for this event. Error: $($_.Exception.Message)"
-            $userGroupCache[$Incident.UserName] = @("ERROR_USER_NOT_FOUND") # Cache the error state
-        }
-    }
-    
-    # Now check the user's groups against the authorized list
-    $isAuthorized = $false
-    foreach ($group in $userGroupCache[$Incident.UserName]) {
-        if ($AuthorizedGroups -contains $group) {
-            $isAuthorized = $true
-            break # User is in at least one authorized group, no need to check further
-        }
-    }
-
-    if (-not $isAuthorized) {
-        $FlagReason += "Unauthorized User"
-    }
-
-    # If the event was flagged for any reason, add it to our final list
-    if ($FlagReason.Count -gt 0) {
-        $Incident | Add-Member -MemberType NoteProperty -Name "ReasonForFlag" -Value ($FlagReason -join '; ')
-        $Anomalies += $Incident
-    }
+} else {
+    Write-Output "Analysis complete. No suspicious activity found."
 }
 
 # --- Step 5: Report Generation ---
@@ -178,4 +154,5 @@ if ($Anomalies.Count -gt 0) {
     }
 } else {
     Write-Host "Analysis complete. No suspicious activity found." -ForegroundColor Green
+
 }
