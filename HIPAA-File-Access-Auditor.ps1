@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Audits Windows Security Event Logs for suspicious file access to help meet HIPAA requirements.
 
@@ -127,7 +127,44 @@ $userGroupCache = @{} # Cache for AD group memberships to improve performance
 
 Write-Verbose "Analyzing relevant events for anomalies..."
 foreach ($Incident in $Incidents) {
-    # ... (rest of the foreach loop is unchanged) ...
+    $FlagReason = @() # Array to hold reasons for flagging this event
+
+    # Check 1: Was the access outside business hours?
+    $IncidentTime = $Incident.Timestamp.TimeOfDay
+    if ($IncidentTime -lt ([timespan]$BusinessHoursStart) -or $IncidentTime -gt ([timespan]$BusinessHoursEnd)) {
+        $FlagReason += "After-Hours Access"
+    }
+
+    # Check 2: Was the user unauthorized?
+    # First, check our cache. If user not in cache, query AD and add them.
+    if (-not $userGroupCache.ContainsKey($Incident.UserName)) {
+        try {
+            $userGroups = (Get-ADUser -Identity $Incident.UserName -Properties MemberOf -ErrorAction Stop).MemberOf | ForEach-Object { ($_ -split ',|=')[1] }
+            $userGroupCache[$Incident.UserName] = $userGroups
+        } catch {
+            Write-Warning "Could not query AD groups for user $($Incident.UserName). User will be treated as unauthorized for this event. Error: $($_.Exception.Message)"
+            $userGroupCache[$Incident.UserName] = @("ERROR_USER_NOT_FOUND") # Cache the error state
+        }
+    }
+    
+    # Now check the user's groups against the authorized list
+    $isAuthorized = $false
+    foreach ($group in $userGroupCache[$Incident.UserName]) {
+        if ($AuthorizedGroups -contains $group) {
+            $isAuthorized = $true
+            break # User is in at least one authorized group, no need to check further
+        }
+    }
+
+    if (-not $isAuthorized) {
+        $FlagReason += "Unauthorized User"
+    }
+
+    # If the event was flagged for any reason, add it to our final list
+    if ($FlagReason.Count -gt 0) {
+        $Incident | Add-Member -MemberType NoteProperty -Name "ReasonForFlag" -Value ($FlagReason -join '; ')
+        $Anomalies += $Incident
+    }
 }
 
 # --- Step 5: Report Generation ---
