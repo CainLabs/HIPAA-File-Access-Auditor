@@ -107,7 +107,7 @@ foreach ($fileAccessEvent in $Events) {
                 Process   = $fileAccessEvent.Properties[7].Value
             }
             $Incidents += $EnrichedEvent
-            
+
             # Break the inner loop since we found a match
             break
         }
@@ -146,7 +146,7 @@ foreach ($Incident in $Incidents) {
             $userGroupCache[$Incident.UserName] = @("ERROR_USER_NOT_FOUND") # Cache the error state
         }
     }
-    
+
     # Now check the user's groups against the authorized list
     $isAuthorized = $false
     foreach ($group in $userGroupCache[$Incident.UserName]) {
