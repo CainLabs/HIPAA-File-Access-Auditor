@@ -1,3 +1,4 @@
+[![PowerShell Script Analyzer](https://github.com/CainLabs/HIPAA-File-Access-Auditor/actions/workflows/lint.yml/badge.svg)](https://github.com/CainLabs/HIPAA-File-Access-Auditor/actions/workflows/lint.yml)
 # HIPAA File Access Auditor
 
 ## The Problem
@@ -110,4 +111,5 @@ This script has been tested using a structured validation plan. For detailed ins
 ## Disclaimer
 
 This tool is provided as-is to assist with security and compliance efforts. It is not a guarantee of HIPAA compliance. Always validate the script's findings and use it as one component of a comprehensive security and privacy program.
+
 
