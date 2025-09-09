@@ -27,11 +27,11 @@
     The full path, including filename, where the CSV report will be saved.
 
 .EXAMPLE
-    .\HIPAA-File-Access-Auditor.ps1 -Path "D:\PHI", "E:\Billing" -AuthorizedGroups "ClinicalStaff", "BillingDept" -ReportPath "C:\Audits\today.csv"
+    .\HIPAA-File-Access-Auditor.ps1 -Path "D:\PHI", "E:\Billing" -AuthorizedGroups "ClinicalStaff", "BillingDept" -ReportPath "C:\Audits\today.csv" -Verbose
 
 .NOTES
-    Author: [Your Name]
-    Version: 1.0
+    Author: Christian Cain (CainLabs)
+    Version: 1.1
     Requires: Active Directory PowerShell Module (for group membership checks).
               "Audit File System" policy must be enabled for Success events.
 #>
@@ -85,7 +85,7 @@ if (-not $Events) {
     return # Stop script execution as there is nothing to process
 }
 
-Write-Host "Found $($Events.Count) initial events to analyze."
+Write-Verbose "Found $($Events.Count) initial events to analyze."
 
 # --- Step 3: Initial Processing and Filtering ---
 $Incidents = @() # Create an empty array to store suspicious events
@@ -169,7 +169,7 @@ foreach ($Incident in $Incidents) {
 
 # --- Step 5: Report Generation ---
 if ($Anomalies.Count -gt 0) {
-    Write-Output "Analysis complete. Found $($Anomalies.Count) suspicious events."
+    Write-Warning "Analysis complete. Found $($Anomalies.Count) suspicious events."
     try {
         $Anomalies | Export-Csv -Path $ReportPath -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
         Write-Output "Report successfully generated at: $ReportPath"
@@ -178,18 +178,4 @@ if ($Anomalies.Count -gt 0) {
     }
 } else {
     Write-Output "Analysis complete. No suspicious activity found."
-}
-
-# --- Step 5: Report Generation ---
-if ($Anomalies.Count -gt 0) {
-    Write-Host "Analysis complete. Found $($Anomalies.Count) suspicious events." -ForegroundColor Yellow
-    try {
-        $Anomalies | Export-Csv -Path $ReportPath -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
-        Write-Host "Report successfully generated at: $ReportPath" -ForegroundColor Green
-    } catch {
-        Write-Error "Failed to write report to $ReportPath. Error: $($_.Exception.Message)"
-    }
-} else {
-    Write-Host "Analysis complete. No suspicious activity found." -ForegroundColor Green
-
 }
